@@ -9,24 +9,23 @@ win = visual.Window(fullscr=True,
                     size = [1920, 1080],
                     color = (0.1954, 0.1954, 0.1954))
             
-stim = visual.TextStim(win = win, text = "Jaka sylaba wariacie?", color = '#FFFFFF')
-#box = visual.Rect(win, height = 600, width = 600, color = '#000000')
+stim = visual.TextStim(win = win, text = "Jaka sylaba wariacie?", color = '#000000')
+box = visual.Rect(win, height = 50, width = 200, color = '#FFFFFF')
 text=""
-#win.flip()
-#box.draw()
 stim.draw()
+box.draw()
+win.flip()
 while True:
     key = event.waitKeys()[0]
     if key == 'return':
         break
     elif key == 'backspace':
         text = text[:-1] 
-    else:
+    elif key.isalpha() and len(key)==1:
         text += key
-    # Update textbox
     stim.text = text
-    win.flip()
-    #box.draw()
+    box.draw()
     stim.draw()
+    win.flip()
     
 print(stim.text)

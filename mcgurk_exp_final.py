@@ -77,7 +77,8 @@ dummy_mode = True
 full_screen = True
 
 # creates nested dictionary of all conditions
-trials = data.importConditions(r'C:\Users\EAPL2\Desktop\mcGurk\listy_naglowki\trials.csv')
+dir_path = os.path.dirname(os.path.realpath(__file__))
+trials = data.importConditions(os.path.join(dir_path, r'listy_naglowki', 'trials.csv'))
 
 #shuffle trials
 shuffle(trials)
@@ -271,21 +272,18 @@ pylink.openGraphicsEx(genv)
 
 def clear_screen(win):
     """ clear up the PsychoPy window"""
-
     win.fillColor = genv.getBackgroundColor()
     win.flip()
 
 
 def show_msg(win, text, wait_for_keypress=True):
     """ Show task instructions on screen"""
-
     msg = visual.TextStim(win, text,
                           color=genv.getForegroundColor(),
                           wrapWidth=scn_width/2)
     clear_screen(win)
     msg.draw()
     win.flip()
-
     # wait indefinitely, terminates upon any key press
     if wait_for_keypress:
         event.waitKeys()
@@ -367,12 +365,13 @@ def run_trial(trials, trial_index):
     """ Helper function specifying the events that will occur in a single trial
     trial_index - record the order of trial presentation in the task
     """
-    
+    print("running trial")
     mov = visual.MovieStim3(
         win = win, 
         filename=os.path.join('videos', trials[trial_index]['file']),
         volume = 100)
         
+    print("mov created")
     # dimension of the video
     vid_w, vid_h = mov.size
     
@@ -387,7 +386,7 @@ def run_trial(trials, trial_index):
         languageStyle='LTR',
         depth=0.0);
 
-    
+
     tlo = visual.GratingStim(
         win=win, name='tlo',
         tex=None, mask=None,
@@ -396,7 +395,7 @@ def run_trial(trials, trial_index):
         opacity=None, contrast=1.0, blendmode='avg',
         texRes=128.0, interpolate=True, depth=-1.0)
 
-
+    print("krzyz i tlo created")
     # get a reference to the currently active EyeLink connection
     el_tracker = pylink.getEYELINK()
 
@@ -452,9 +451,8 @@ def run_trial(trials, trial_index):
 
     # Allocate some time for the tracker to cache some samples
     pylink.pumpDelay(100)
-    
+    print("po eyetrackin business")
     # show fixation cross before the image
-    clear_screen(win)
     tlo.draw()
     text_krzyzyk.draw()  
     win.flip()
@@ -473,7 +471,7 @@ def run_trial(trials, trial_index):
     pylink.pumpDelay(100)
 
     # show the video, and log a message to mark the onset of the video
-    
+    print("clock stuff")
     clear_screen(win)
     tlo.draw()
     
@@ -484,7 +482,7 @@ def run_trial(trials, trial_index):
     el_tracker.sendMessage('Video stimulus onset')
     
     # Okay dotąd jest raczej okay -  tu video playbackd
-
+    print("bd filmik")
     while (mov.status is not STOPPED):
         error = el_tracker.isRecording()
         if error is not pylink.TRIAL_OK:
@@ -497,11 +495,10 @@ def run_trial(trials, trial_index):
             if keycode == 'escape':
                 el_tracker.sendMessage('trial_skipped_by_user')
                 # clear the screen
-                clear_screen(win)
+                win.flip()
                 # abort trial
                 abort_trial()
                 return pylink.SKIP_TRIAL
-
             # Terminate the task if Ctrl-c
             if keycode == 'c' and (modifier['ctrl'] is True):
                 el_tracker.sendMessage('terminated_by_user')
@@ -509,45 +506,44 @@ def run_trial(trials, trial_index):
                 return pylink.ABORT_EXPT
         # draw movie frames
         mov.draw()
-        clear_screen(win)
+        win.flip()
             
     # record the duration of the video
     vid_duration = int(mov_clock.getTime()*1000)
+    print("Był filmik")
     el_tracker.sendMessage('Video stimulus end')
     el_tracker.sendMessage('Video length: {}'.format(vid_duration))
     # clear the screen
     clear_screen(win)
     el_tracker.sendMessage('blank_screen')
-    # send a message to clear the Data Viewer screen as well
-    el_tracker.sendMessage('!V CLEAR %d %d %d' % bgcolor_RGB)
+
 
     win.flip()
     el_tracker.stopRecording()
     
     # Get participant input with dialogue box
-            
-    stim = visual.TextStim(win = win, text = "Jaka sylaba wariacie?", color = '#FFFFFF')
-    #box = visual.Rect(win, height = 600, width = 600, color = '#000000')
+    print("bd pytanie")
+    stim = visual.TextStim(win = win, text = "Jaka sylaba wariacie?", color = '#000000')
+    box = visual.Rect(win, height = 50, width = 200, color = '#FFFFFF')
     text=""
-    #win.flip()
-    #box.draw()
-    #stim.draw()
+    stim.draw()
+    box.draw()
+    win.flip()
     while True:
-        stim.draw()
         key = event.waitKeys()[0]
         if key == 'return':
             break
         elif key == 'backspace':
             text = text[:-1] 
-        else:
+        elif key.isalpha() and len(key)==1:
             text += key
-        # Update textbox
         stim.text = text
+        box.draw()
+        stim.draw()
         win.flip()
-        #box.draw()
     
     sylaba = stim.text
-
+    print("było pytanie")
     # record trial variables to the EDF data file, for details, see Data
     # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
     el_tracker.sendMessage('!V TRIAL_VAR condition %s' % trials[trial_index]['syllable'])
@@ -560,26 +556,112 @@ def run_trial(trials, trial_index):
 
     stimulus = trials[trial_index]['syllable']
     fields=[trial_index,stimulus,sylaba]
-    with open(r'C:\Users\EAPL2\Desktop\mcGurk\results\{}.csv'.format(session_identifier), 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(fields)
+    results.append(fields)
+
 
 
 
 ## step 5a: pre-calibration instructions
 
 # Initialize components for Routine "welcome"
+text_1 = visual.TextStim(win=win, name='text_2',
+    text='W tym zadaniu zobaczysz filmiki z osobą wypowiadającą sylabę,'
+        +'\nktóre będą pojawiać się pojedynczo na ekranie.'
+        + '\n\nTwoim zadaniem będzie napisanie, jaką sylabę wymówiła osoba. '
+        + '\n\n\nW sumie zobaczysz 54 filmiki. Całość zadania zajmie ok. 10 minut.'
+        + '\n\n\n\nNaciśnij SPACJĘ, aby przejść dalej. ',
+    font='Arial',
+    pos=(0, 0), height=30, wrapWidth=scn_width/2, ori=0.0, 
+    color='black', colorSpace='rgb', opacity=None, 
+    languageStyle='LTR',
+    depth=0.0);
+text_1.draw()  
+win.flip()
+# show the text until the SPACEBAR is pressed
+event.clearEvents()  # clear cached PsychoPy events
+get_keypress = False
+while not get_keypress:
+# check keyboard events
+    for keycode, modifier in event.getKeys(modifiers=True):
+        # Stop stimulus presentation when the spacebar is pressed
+        if keycode == 'space':
+            get_keypress = True
+            
 text_2 = visual.TextStim(win=win, name='text_2',
-    text='Zostanie ci przedstawiona seria filmików.' 
-        +'\n\nObejrzyj każdy filmik uważnie.'
-        +'\n\nZapisz jakią sylabę wypowiedziała osoba na nagraniu.'
-        +'\n\n\n\n\nNaciśnij spację, aby przejść dalej.\n',
+    text='Sylabę, która wymówiła osoba, będziesz zapisywać przy pomocy klawiatury.'
+        +'\nNaciśnij SPACJĘ, aby przejść dalej. ',
     font='Arial',
     pos=(0, 0), height=30, wrapWidth=scn_width/2, ori=0.0, 
     color='black', colorSpace='rgb', opacity=None, 
     languageStyle='LTR',
     depth=0.0);
 text_2.draw()  
+win.flip()
+# show the text until the SPACEBAR is pressed
+event.clearEvents()  # clear cached PsychoPy events
+get_keypress = False
+while not get_keypress:
+# check keyboard events
+    for keycode, modifier in event.getKeys(modifiers=True):
+        # Stop stimulus presentation when the spacebar is pressed
+        if keycode == 'space':
+            get_keypress = True
+            
+
+text_3 = visual.TextStim(win=win, name='text_2',
+    text='Podczas zadania będziemy zbierać dane o przy pomocy okulografu.'
+        + '\nW związku z tym ważne jest, aby nie poruszyć głową w trakcie całości trwania zadania.'
+        + '\n\nUważaj na to no zwłaszcza podczas pisania. Pomiędzy filmikami utrzymuj wzrok na krzyżyku na środku ekranu.'
+        +'\n\n\nNaciśnij SPACJĘ, aby przejść dalej. ',
+    font='Arial',
+    pos=(0, 0), height=30, wrapWidth=scn_width/2, ori=0.0, 
+    color='black', colorSpace='rgb', opacity=None, 
+    languageStyle='LTR',
+    depth=0.0);
+text_3.draw()  
+win.flip()
+# show the text until the SPACEBAR is pressed
+event.clearEvents()  # clear cached PsychoPy events
+get_keypress = False
+while not get_keypress:
+# check keyboard events
+    for keycode, modifier in event.getKeys(modifiers=True):
+        # Stop stimulus presentation when the spacebar is pressed
+        if keycode == 'space':
+            get_keypress = True
+            
+text_3 = visual.TextStim(win=win, name='text_2',
+    text='Podczas zadania będziemy zbierać dane o przy pomocy okulografu.'
+        + '\nW związku z tym ważne jest, aby nie poruszyć głową w trakcie całości trwania zadania.'
+        + '\n\nUważaj na to no zwłaszcza podczas pisania. Pomiędzy filmikami utrzymuj wzrok na krzyżyku na środku ekranu.'
+        +'\n\n\nNaciśnij SPACJĘ, aby przejść dalej. ',
+    font='Arial',
+    pos=(0, 0), height=30, wrapWidth=scn_width/2, ori=0.0, 
+    color='black', colorSpace='rgb', opacity=None, 
+    languageStyle='LTR',
+    depth=0.0);
+text_3.draw()  
+win.flip()
+# show the text until the SPACEBAR is pressed
+event.clearEvents()  # clear cached PsychoPy events
+get_keypress = False
+while not get_keypress:
+# check keyboard events
+    for keycode, modifier in event.getKeys(modifiers=True):
+        # Stop stimulus presentation when the spacebar is pressed
+        if keycode == 'space':
+            get_keypress = True
+            
+text_4 = visual.TextStim(win=win, name='text_2',
+    text='Pamiętaj: Zapisuj sylabę, jaką wymówiła osoba na filmiku.'
+        + '\nOdpowiadaj od razu po zniknięciu filmiku, gdy pojawi się szary ekran.'
+        +'\n\n\nNaciśnij SPACJĘ, aby przejść dalej. ',
+    font='Arial',
+    pos=(0, 0), height=30, wrapWidth=scn_width/2, ori=0.0, 
+    color='black', colorSpace='rgb', opacity=None, 
+    languageStyle='LTR',
+    depth=0.0);
+text_4.draw()  
 win.flip()
 # show the text until the SPACEBAR is pressed
 event.clearEvents()  # clear cached PsychoPy events
@@ -603,35 +685,19 @@ if not dummy_mode:
         el_tracker.exitCalibration()
 
 ## Step 6: Run the experimental trials, index all the trials
-
+results = []
 trial_index = 0
 for x in range(len(trials)-1):
     print("petla trials")
     trial_index += 1
-    run_trial(trials, trial_index)
+    run_trial(trials, trial_index, results)
     print("po run")
-    if trial_index % 20 == 0 and trial_index < len(trials):
-        print("A to jest klasyczny przypadek")
-        text_przerwa.draw()  
-        win.flip()
-        print(f"Po flip{x}")
-        # show the text until the SPACEBAR is pressed
-        event.clearEvents()  # clear cached PsychoPy events
-        get_keypress = False
-        while not get_keypress:
-        # check keyboard events
-            for keycode, modifier in event.getKeys(modifiers=True):
-                # Start calibration when the space is pressed
-                if keycode == 'space':
-                    get_keypress = True
-                    if not dummy_mode:
-                        try:
-                            win.flip()
-                            el_tracker.doTrackerSetup()
-                        except RuntimeError as err:
-                            print('ERROR:', err)
-                            el_tracker.exitCalibration()
-    
+   
+
+with open(r'C:\Users\EAPL2\Desktop\mcGurk\results\{}.csv'.format(session_identifier), 'w-+', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(a)
+
 
 text_koniec = visual.TextStim(win=win, name='text_koniec',
     text='Dziękujemy, to już koniec badania. \n\n\n\nNaciśnij spację, aby zakończyć',
